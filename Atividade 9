@@ -1,0 +1,108 @@
+
+-- ============================================================
+-- 3º PASSO - CRIAR E POPULAR A TABELA DE ENTREGAS
+-- ============================================================
+
+IF OBJECT_ID('entregas', 'U') IS NULL
+BEGIN
+    CREATE TABLE entregas (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        id_pedido INT NOT NULL,
+        data_entrega DATE NOT NULL,
+        status VARCHAR(20) NOT NULL,
+        valor_frete DECIMAL(10,2) NOT NULL,
+        FOREIGN KEY (id_pedido) REFERENCES pedidos(id)
+    );
+END
+GO
+
+-- Índice de desempenho por status
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'idx_status_entrega' AND object_id = OBJECT_ID('entregas')
+)
+BEGIN
+    CREATE INDEX idx_status_entrega ON entregas(status);
+END
+GO
+
+-- Insere as entregas somente se a tabela estiver vazia
+IF NOT EXISTS (SELECT 1 FROM entregas)
+BEGIN
+    INSERT INTO entregas (id_pedido, data_entrega, status, valor_frete)
+    VALUES
+    (1, '2025-01-13', 'Entregue', 25.00),
+    (2, '2025-02-07', 'Entregue', 18.50),
+    (3, '2025-03-20', 'Cancelada', 0.00),
+    (4, '2025-04-05', 'Entregue', 35.00),
+    (5, '2025-04-17', 'Pendente', 28.90),
+    (6, '2025-05-06', 'Entregue', 22.00);
+END
+GO
+
+-- ============================================================
+-- 4º PASSO - CRIAR AS TABELAS VIRTUAIS (VIEWS)
+-- ============================================================
+
+-- VIEW 1 - RESUMO DAS ENTREGAS
+-- Apresenta o total de entregas e a média dos valores de frete.
+
+IF OBJECT_ID('vw_resumo_entregas', 'V') IS NOT NULL
+    DROP VIEW vw_resumo_entregas;
+GO
+
+CREATE VIEW vw_resumo_entregas
+AS
+SELECT
+    COUNT(*) AS total_entregas,
+    AVG(valor_frete) AS media_valor_frete
+FROM entregas;
+GO
+
+-- VIEW 2 - ENTREGAS CONCLUÍDAS
+-- Mostra somente as entregas com status "Entregue".
+-- Utiliza INNER JOIN entre entregas e pedidos.
+
+IF OBJECT_ID('vw_entregas_concluidas', 'V') IS NOT NULL
+    DROP VIEW vw_entregas_concluidas;
+GO
+
+CREATE VIEW vw_entregas_concluidas
+AS
+SELECT
+    e.id_pedido AS id_pedido,
+    p.valor AS valor_pedido,
+    e.valor_frete AS valor_frete,
+    e.data_entrega AS data_entrega
+FROM entregas AS e
+INNER JOIN pedidos AS p
+    ON e.id_pedido = p.id
+WHERE e.status = 'Entregue';
+GO
+
+-- ============================================================
+-- CONSULTA DAS VIEWS
+-- ============================================================
+
+-- Consulta da View 1
+SELECT *
+FROM vw_resumo_entregas;
+GO
+
+-- Consulta da View 2
+SELECT *
+FROM vw_entregas_concluidas;
+GO
+
+-- ============================================================
+-- CONSULTAS PARA CONFERÊNCIA DOS DADOS
+-- ============================================================
+
+SELECT * FROM clientes;
+GO
+
+SELECT * FROM pedidos;
+GO
+
+SELECT * FROM entregas;
+GO
